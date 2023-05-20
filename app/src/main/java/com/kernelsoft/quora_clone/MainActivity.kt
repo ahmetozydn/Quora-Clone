@@ -5,19 +5,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -29,40 +25,73 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.rounded.Home
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
-import com.kernelsoft.quora_clone.presentation.navigation.BottomBarScreen
+import com.kernelsoft.quora_clone.presentation.navigation.BottomNavigationGraph
+import com.kernelsoft.quora_clone.presentation.navigation.ScreenModel
+import com.kernelsoft.quora_clone.presentation.navigation.ScreenModel.BottomBarScreen
+import com.kernelsoft.quora_clone.presentation.screens.HomeScreen
 import com.kernelsoft.quora_clone.ui.theme.*
-import kotlinx.coroutines.Dispatchers
 
 
 class MainActivity : ComponentActivity() {
+    @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+    @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             QuoracloneTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
-                ) {
-                    MainScreen()
+                val navController = rememberNavController()
+                val keyboardController = LocalSoftwareKeyboardController.current
+                val coroutineScope = rememberCoroutineScope()
+                val sheetState = rememberModalBottomSheetState(
+                    initialValue = ModalBottomSheetValue.Hidden,
+                    animationSpec = SwipeableDefaults.AnimationSpec,
+                    confirmStateChange = {
+                        it != ModalBottomSheetValue.HalfExpanded
+                    },
+                    skipHalfExpanded = true,
+
+                    )
+                BackHandler(sheetState.isVisible) {
+                    coroutineScope.launch {
+                        sheetState.hide()
+                    }
                 }
+                LaunchedEffect(Unit){
+                    coroutineScope.launch {
+                        if (!sheetState.isVisible) {
+                            keyboardController?.hide()
+                        }
+                    }
+                }
+                ModalBottomSheetLayout(
+                    sheetState = sheetState,
+
+                    sheetContent = { BottomSheet(sheetState, keyboardController) },
+                    modifier = Modifier.fillMaxSize().fillMaxWidth().background(Color.LightGray),
+                    sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    sheetContentColor = Color.Transparent,
+                    scrimColor = Color.Transparent
+                ) {
+                    Scaffold(
+                       // topBar = { AppBar("Home",sheetState) },
+                        bottomBar = { BottomBar(navController = navController) },
+                    ) {
+                        BottomNavigationGraph(navController = navController,sheetState)
+                    }
+                }
+
             }
         }
     }
@@ -73,20 +102,25 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DefaultPreview() {
     QuoracloneTheme {
-        MainScreen()
+       //HomeScreen()
     }
 }
+@Composable
+fun CustomizableAppBar(content: @Composable () -> Unit) {
+    TopAppBar(
+        backgroundColor = Gray50,
+        elevation = 0.dp,
+        modifier = Modifier.fillMaxWidth(),
+        contentColor = Color.White
 
+    ) {
+        content()
+    }
+}
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun MainScreen() {
-    val navController = rememberNavController()
-    Scaffold(
-        topBar = { AppBar("Home") },
-        bottomBar = { BottomBar(navController = navController) }
-    ) {
-        BottomNavGraph(navController = navController)
-    }
+
 }
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
@@ -94,26 +128,20 @@ fun MainScreen() {
 @Composable
 fun AppBar(
     title: String,
+    sheetState: ModalBottomSheetState,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val coroutineScope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(
-        initialValue = ModalBottomSheetValue.Hidden,
-        animationSpec = SwipeableDefaults.AnimationSpec,
-        confirmStateChange = {
-            it != ModalBottomSheetValue.HalfExpanded
-        }
-    )
     var showBottomSheet by remember { mutableStateOf(false) }
     var isClicked by mutableStateOf(false)
     val appBarHorizontalPadding = 4.dp
     val titleIconModifier = Modifier.fillMaxHeight()
         .fillMaxWidth() // width(1230.dp - appBarHorizontalPadding)
     val focusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
 
 
-    Column {
+    Column(modifier = Modifier.wrapContentSize()) {
         TopAppBar(
             backgroundColor = Gray50,
             elevation = 0.dp,
@@ -175,26 +203,17 @@ fun AppBar(
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.vc_add),
-                                contentDescription = "Add Question  ",
+                                contentDescription = "Add Question",
                             )
                         }
                     }
                 }
-
             }
         }
         Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(color = Gray100))
     }
-    BackHandler(sheetState.isVisible) {
-        coroutineScope.launch {
-            sheetState.hide()
-        }
-    }
-    if(!sheetState.isVisible){
-        coroutineScope.launch(Dispatchers.Default){
-            keyboardController?.hide()
-        }
-    }
+
+
     /*if(isClicked){
         LaunchedEffect(key1 = Unit){
             coroutineScope.launch {
@@ -215,21 +234,12 @@ fun AppBar(
             else sheetState.show()
         }
     }*/
-    ModalBottomSheetLayout(
-        sheetState = sheetState,
-        sheetContent = { BottomSheet(sheetState, keyboardController) },
-        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-        sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-    ) { }
+
 }
 
 @Composable
 fun BottomBar(navController: NavHostController) {
-    val screens = listOf(
-        BottomBarScreen.Home,
-        BottomBarScreen.Profile,
-        BottomBarScreen.Settings,
-    )
+
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -237,7 +247,7 @@ fun BottomBar(navController: NavHostController) {
 
 
     BottomNavigation(backgroundColor = Color.White) {
-        screens.forEachIndexed() { index, item ->
+        ScreenModel().screens.forEach { item ->
             //val currentRoute = navBackStackEntry.value?.destination?.route;
             //val selected = currentRoute == screens.route
             val isSelected = currentRoute == item.route
@@ -287,64 +297,28 @@ fun RowScope.AddItem(
     )
 }
 
-
-@Composable
-fun BottomNavGraph(navController: NavHostController) {
-    NavHost(
-        navController = navController,
-        startDestination = BottomBarScreen.Home.route
-    ) {
-        composable(route = BottomBarScreen.Home.route) {
-            HomeScreen()
-        }
-        composable(route = BottomBarScreen.Profile.route) {
-            ProfileScreen()
-        }
-        composable(route = BottomBarScreen.Settings.route) {
-            SettingsScreen()
-        }
-    }
-}
-
-
-
-@Composable
-fun HomeScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "HOME",
-            fontSize = MaterialTheme.typography.h3.fontSize,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
-    }
-}
-
-@Composable
-@Preview
-fun HomeScreenPreview() {
-    HomeScreen()
-}
-
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun ProfileScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "PROFILE",
-            fontSize = MaterialTheme.typography.h3.fontSize,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
+    Scaffold (topBar = {CustomizableAppBar {
+        TopAppBar {
+            Text("profile")
+        }
+
+    }}){
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Magenta),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "PROFILE",
+                fontSize = MaterialTheme.typography.h3.fontSize,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+        }
     }
 }
 
@@ -430,10 +404,11 @@ fun BottomSheet(
     val coroutineScope = rememberCoroutineScope()
     val buttonBackgroundColor = if (isTextFieldEmpty) LigtRed else DarkRed
     val isTextFieldFocused = remember { mutableStateOf(true) }
-    val keyboardController = LocalSoftwareKeyboardController.current
+    //val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(true) {
         focusRequester.requestFocus()
     }
+
     Column(
         modifier = Modifier.padding(8.dp).fillMaxWidth().fillMaxHeight(0.95f),
     ) {
@@ -441,27 +416,40 @@ fun BottomSheet(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            FloatingActionButton(  //TODO() replace with IconButton
-                modifier = Modifier.wrapContentWidth().shadow(elevation = 0.dp).padding(0.dp)
-                    .heightIn(32.dp)
-                    .border(
-                        BorderStroke(0.dp, Color.Transparent)
-                    ).background(Color.Transparent),
-                onClick = {
-                    coroutineScope.launch {
-                        sheetState.hide()
+            /* FloatingActionButton(  //TODO() replace with IconButton
+                 modifier = Modifier.wrapContentWidth().shadow(elevation = 0.dp).padding(0.dp)
+                     .heightIn(32.dp)
+                     .border(
+                         BorderStroke(0.dp, Color.Transparent)
+                     ).background(Color.Transparent),
+                 onClick = {
+                     coroutineScope.launch {
+                         sheetState.hide()
 
-                    }
-                    keyboardController?.hide()
-                },
-                backgroundColor = Color.White,
-                shape = MaterialTheme.shapes.small.copy(CornerSize(percent = 0)),
-                contentColor = Color.Gray,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    0.dp
+                     }
+                     keyboardController?.hide()
+                 },
+                 backgroundColor = Color.White,
+                 shape = MaterialTheme.shapes.small.copy(CornerSize(percent = 0)),
+                 contentColor = Color.Gray,
+                 elevation = FloatingActionButtonDefaults.elevation(
+                     0.dp
+                 )
+             ) {
+                 Icon(painterResource(R.drawable.vc_close), "close")
+             }*/
+
+            IconButton(onClick = {
+                coroutineScope.launch {
+                    sheetState.hide()
+                }
+                keyboardController?.hide()
+            }) {
+                Icon(
+                    painterResource(R.drawable.vc_close),
+                    "close",
+                    tint = Color.Gray
                 )
-            ) {
-                Icon(painterResource(R.drawable.vc_close), "close")
             }
             ExtendedFloatingActionButton(
                 modifier = Modifier
@@ -493,7 +481,7 @@ fun BottomSheet(
         Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(color = Color.Gray))
         Spacer(modifier = Modifier.height(32.dp))
         OutlinedTextField(
-            modifier = Modifier.fillMaxWidth().padding( 0.dp).focusRequester(focusRequester)
+            modifier = Modifier.fillMaxWidth().padding(0.dp).focusRequester(focusRequester)
                 .onFocusChanged { isTextFieldFocused.value = it.isFocused },
             value = descriptionTextField,
             label = { Text(text = "Description") },
@@ -531,6 +519,24 @@ fun BottomSheet(
             /*           label = "Description",
                                    placeholder = "Not compulsory"*/
         )
+
+        Button(
+            onClick = {
+                // Handle button click
+            },
+            modifier = Modifier
+                .padding(0.dp)
+                .defaultMinSize()
+                .background(Color.Blue)
+                .clickable { /* Handle button click */ }
+        ) {
+            Text(
+                text = "Text Button",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
