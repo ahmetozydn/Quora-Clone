@@ -1,58 +1,137 @@
 package com.kernelsoft.quora_clone.presentation.screens
 
 import android.annotation.SuppressLint
-import androidx.activity.compose.BackHandler
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
-import com.kernelsoft.quora_clone.AppBar
-import com.kernelsoft.quora_clone.BottomBar
-import com.kernelsoft.quora_clone.BottomSheet
-import com.kernelsoft.quora_clone.CustomizableAppBar
-import com.kernelsoft.quora_clone.presentation.navigation.BottomNavigationGraph
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kernelsoft.quora_clone.R
+import com.kernelsoft.quora_clone.presentation.components.CustomizableAppBar
+import com.kernelsoft.quora_clone.ui.theme.Gray50
+import com.kernelsoft.quora_clone.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
 
-
-@OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
-@SuppressLint("UnusedMaterialScaffoldPaddingParameter", "UnrememberedMutableState")
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterialApi::class)
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    sheetState: ModalBottomSheetState,
+    viewModel: HomeViewModel = viewModel(),
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    var bottomSheetState by remember { viewModel.sheetState }
+    val context = LocalContext.current
+    var showBottomSheet = remember { false }
+    Scaffold(topBar = {
+        CustomizableAppBar {
+                val keyboardController = LocalSoftwareKeyboardController.current
+                val appBarHorizontalPadding = 4.dp
+                val titleIconModifier = Modifier.fillMaxHeight()
+                    .fillMaxWidth() // width(1230.dp - appBarHorizontalPadding)
+                val focusRequester = remember { FocusRequester() }
+                val coroutineScope = rememberCoroutineScope()
 
-    /*    Column {
-            Box(
-                modifier = Modifier
-                    .wrapContentSize()
-                    .background(Color.Gray),
-            ) {
-                Text("home")
-            }
-            AppBar("Home")
+                Box(Modifier.height(32.dp).background(Gray50)) {
+                    Row(
+                        Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ProvideTextStyle(value = MaterialTheme.typography.h2) {
+                            CompositionLocalProvider(
+                                LocalContentAlpha provides ContentAlpha.high,
+                            ) {
+                                Text(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                    fontWeight = FontWeight.Bold,
+                                    style = TextStyle(fontSize = 18.sp),
+                                    maxLines = 1,
+                                    text = "Home",
+                                )
+                            }
+                        }
+                    }
 
-        }*/
+                    //actions
+                    CompositionLocalProvider(LocalContentAlpha provides ContentAlpha.medium) {
+                        Row(
+                            Modifier.fillMaxHeight(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically,
+                            content = actions
+                        )
+                    }
+                    Row(
+                        titleIconModifier,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        CompositionLocalProvider(
+                            LocalContentAlpha provides ContentAlpha.high,
+                        ) {
+                            IconButton(
+                                modifier = Modifier.align(alignment = Alignment.CenterVertically),
+                                onClick = {
+                                    /*coroutineScope.launch {
+                                        keyboardController?.show()
+                                        bottomSheetState.animateTo(ModalBottomSheetValue.Expanded)
+                                        *//*     LaunchedEffect(key1 = Unit) {
+                                                 focusRequester.requestFocus()
+                                             }*//*
+                                    }*/
+                                    coroutineScope.launch{
+                                        sheetState.animateTo(ModalBottomSheetValue.Expanded)
+                                        keyboardController?.show()
 
-    Scaffold(topBar = { CustomizableAppBar {
-        TopAppBar { Text("Home")  }
-
-    }}) {
-        Box(Modifier.fillMaxSize().background(Color.Green)){
+                                    }
+                                    //viewModel.sheetState.value.currentValue= ModalBottomSheetValue.Expanded
+                                    //viewModel.showBottomSheet()
+                                   // viewModel.isOpenBottomSheet.value = true
+                                    println("the value of sheetstate is ${viewModel.sheetState.value.currentValue}")
+                                    println("is visible? ${viewModel.sheetState.value.isVisible}")
+                                    //showBottomSheet = true
+                                    viewModel.isOpenBottomSheet.value = true
+                                    println("value of itttttttttttttt ${viewModel.isOpenBottomSheet}")
+                                   // viewModel.openBottomSheet()
+                                },
+                                enabled = true,
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.vc_add),
+                                    contentDescription = "Add Question",
+                                )
+                            }
+                        }
+                    }
+                }
+        }
+    }) {
+        Box(Modifier.fillMaxSize().background(Color.Green)) {
             Column {
-                repeat(5){
+                repeat(5) {
                     Text("home screen", color = Color.Black)
                 }
             }
         }
-
     }
-
-
+      /*  LaunchedEffect(showBottomSheet){
+            println("LAUNCHED EFFECT TRIGGERED")
+            bottomSheetState.animateTo(ModalBottomSheetValue.Expanded)
+            showBottomSheet = false
+        }*/
 }

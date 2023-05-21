@@ -2,9 +2,11 @@ package com.kernelsoft.quora_clone
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -35,63 +37,147 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kernelsoft.quora_clone.presentation.components.CustomizableAppBar
 import com.kernelsoft.quora_clone.presentation.navigation.BottomNavigationGraph
 import com.kernelsoft.quora_clone.presentation.navigation.ScreenModel
 import com.kernelsoft.quora_clone.presentation.navigation.ScreenModel.BottomBarScreen
-import com.kernelsoft.quora_clone.presentation.screens.HomeScreen
 import com.kernelsoft.quora_clone.ui.theme.*
+import com.kernelsoft.quora_clone.viewmodel.HomeViewModel
 
 
 class MainActivity : ComponentActivity() {
-    @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+    //private val homeViewModel: HomeViewModel by viewModels()
+
+    @SuppressLint("UnusedMaterialScaffoldPaddingParameter", "CoroutineCreationDuringComposition")
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val viewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+
         setContent {
             QuoracloneTheme {
-                val navController = rememberNavController()
-                val keyboardController = LocalSoftwareKeyboardController.current
+                val sheetState1 = rememberModalBottomSheetState(
+                    initialValue = ModalBottomSheetValue.Hidden,
+                    animationSpec = SwipeableDefaults.AnimationSpec,
+                    confirmStateChange = {
+                        it != ModalBottomSheetValue.HalfExpanded
+                    },
+                    //isSkipHalfExpanded = true
+                )
+                val myState by viewModel.open.collectAsState()
+                val lifecycleOwner = LocalLifecycleOwner.current
+                val myViewModel: HomeViewModel by viewModels()
+                val homeViewModel = viewModel<HomeViewModel>()
+                val dataState = homeViewModel.open.collectAsState()
+                var initialValue = if (myState) ModalBottomSheetValue.Expanded else {
+                    ModalBottomSheetValue.Hidden
+                }
+                lifecycleOwner.lifecycleScope.launchWhenStarted {
+                    viewModel.open.collect { data ->
+                        println("helllllllllllllllllllllllllllllllooooooooooooooooooooooooo")
+                        initialValue = if (myState) ModalBottomSheetValue.Expanded else {
+                            ModalBottomSheetValue.Hidden
+                        }
+                    }
+                }
+                lifecycleScope.launch {
+                    viewModel.open.collect { value ->
+                        // Handle the updated value
+                        // Update UI or perform any necessary actions
+                        if (value) {
+                            println("boooooooooooleeeeaannnnnnnnnnnnnn turrrrrrrrrrrrrr")
+                        } else {
+                            println("boooooooooooleeeeaannnnnnnnnnnnnn falssssssssssssssssssseeeeeeeee")
+                        }
+                    }
+                }
+
+                val composableScope = rememberCoroutineScope()
+                val viewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
+
+                lifecycleScope.launch {
+                    viewModel.open.collect { value ->
+                        // Handle the emitted value from the Flow
+                        // Update UI or perform any necessary actions
+                        println("changesssss detectedddddddddddddddddddddd")
+                    }
+                }
+                val openOrNot = homeViewModel.isOpenBottomSheet
+
+
+                if (myState) {
+                    println("value of itttttttttttttt ${homeViewModel.isOpenBottomSheet}")
+                }
+
+                println("triggeredddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+                val sheetState = remember {
+                    ModalBottomSheetState(
+                        initialValue = initialValue,
+                        animationSpec = SwipeableDefaults.AnimationSpec,
+                        confirmStateChange = {
+                            it != ModalBottomSheetValue.HalfExpanded
+                        },
+                        isSkipHalfExpanded = true
+                    )
+                }
                 val coroutineScope = rememberCoroutineScope()
-                val sheetState = rememberModalBottomSheetState(
+
+                BackHandler(sheetState.isVisible) {
+                    coroutineScope.launch {
+                        sheetState.animateTo(ModalBottomSheetValue.Hidden)
+                    }
+                }
+                if (myState) {
+                    println("openOrNot is true 333333333333333333333333333333333333333333333333333333")
+                    homeViewModel.isOpenBottomSheet.value = false
+                    print("the value of expanded or hidden ${sheetState.currentValue}")
+                }
+                val bottomSheetState by homeViewModel.sheetState
+                val navController = rememberNavController()
+
+                val keyboardController = LocalSoftwareKeyboardController.current
+/*                val sheetState = rememberModalBottomSheetState(
                     initialValue = ModalBottomSheetValue.Hidden,
                     animationSpec = SwipeableDefaults.AnimationSpec,
                     confirmStateChange = {
                         it != ModalBottomSheetValue.HalfExpanded
                     },
                     skipHalfExpanded = true,
-
-                    )
-                BackHandler(sheetState.isVisible) {
-                    coroutineScope.launch {
-                        sheetState.hide()
-                    }
-                }
-                LaunchedEffect(Unit){
-                    coroutineScope.launch {
-                        if (!sheetState.isVisible) {
-                            keyboardController?.hide()
+                    )*/
+                /*    BackHandler(bottomSheetState.isVisible) {
+                        coroutineScope.launch {
+                            bottomSheetState.hide()
                         }
                     }
-                }
+                    LaunchedEffect(Unit){
+                        coroutineScope.launch {
+                            if (!bottomSheetState.isVisible) {
+                                keyboardController?.hide()
+                            }
+                        }
+                    }*/
                 ModalBottomSheetLayout(
-                    sheetState = sheetState,
-
-                    sheetContent = { BottomSheet(sheetState, keyboardController) },
-                    modifier = Modifier.fillMaxSize().fillMaxWidth().background(Color.LightGray),
+                    sheetState = sheetState1,
+                    sheetContent = { BottomSheet(sheetState1, keyboardController) },
+                    modifier = Modifier.fillMaxSize().fillMaxHeight().background(Color.LightGray),
                     sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     sheetContentColor = Color.Transparent,
                     scrimColor = Color.Transparent
                 ) {
                     Scaffold(
-                       // topBar = { AppBar("Home",sheetState) },
+                        // topBar = { AppBar("Home",sheetState) },
                         bottomBar = { BottomBar(navController = navController) },
                     ) {
-                        BottomNavigationGraph(navController = navController,sheetState)
+                        BottomNavigationGraph(navController = navController, sheetState1)
                     }
                 }
-
             }
         }
     }
@@ -102,21 +188,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DefaultPreview() {
     QuoracloneTheme {
-       //HomeScreen()
+        //HomeScreen()
     }
 }
-@Composable
-fun CustomizableAppBar(content: @Composable () -> Unit) {
-    TopAppBar(
-        backgroundColor = Gray50,
-        elevation = 0.dp,
-        modifier = Modifier.fillMaxWidth(),
-        contentColor = Color.White
 
-    ) {
-        content()
-    }
-}
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun MainScreen() {
@@ -300,12 +375,14 @@ fun RowScope.AddItem(
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun ProfileScreen() {
-    Scaffold (topBar = {CustomizableAppBar {
-        TopAppBar {
-            Text("profile")
-        }
+    Scaffold(topBar = {
+        CustomizableAppBar {
+            TopAppBar {
+                Text("profile")
+            }
 
-    }}){
+        }
+    }) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -441,7 +518,8 @@ fun BottomSheet(
 
             IconButton(onClick = {
                 coroutineScope.launch {
-                    sheetState.hide()
+                    //sheetState.hide()
+                    sheetState.animateTo(ModalBottomSheetValue.Hidden)
                 }
                 keyboardController?.hide()
             }) {

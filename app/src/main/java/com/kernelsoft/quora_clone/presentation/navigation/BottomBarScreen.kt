@@ -6,7 +6,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.ui.graphics.vector.ImageVector
 
-class ScreenModel{
+class ScreenModel {
     sealed class BottomBarScreen(
         val route: String,
         //val title: String,
