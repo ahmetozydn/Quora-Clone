@@ -16,8 +16,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -27,9 +29,12 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.kernelsoft.quora_clone.MainActivity
 import com.kernelsoft.quora_clone.R
+import com.kernelsoft.quora_clone.data.model.User
 import com.kernelsoft.quora_clone.ui.theme.DarkRed
 import com.kernelsoft.quora_clone.util.ShowSnackBarMessage
 import kotlinx.coroutines.delay
@@ -37,7 +42,7 @@ import kotlinx.coroutines.launch
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun Register(navController: NavController) {
+fun Register(navController: NavController, onFinishActivity: () -> Unit) {
 
     val name = remember { mutableStateOf("") }
     val email = remember { mutableStateOf("") }
@@ -142,7 +147,7 @@ fun Register(navController: NavController) {
                                     passwordVisibility.value = !passwordVisibility.value
                                 }) {
                                     Icon(
-                                        imageVector = Icons.Default.Face,
+                                        imageVector = ImageVector.vectorResource(R.drawable.password_hide),
                                         tint = if (passwordVisibility.value) MaterialTheme.colors.primary else Color.Gray,
                                         contentDescription = "hide password"
                                     )
@@ -170,7 +175,7 @@ fun Register(navController: NavController) {
                                     confirmPasswordVisibility.value = !confirmPasswordVisibility.value
                                 }) {
                                     Icon(
-                                        imageVector = Icons.Default.Face,
+                                        imageVector = ImageVector.vectorResource(R.drawable.password_hide),
                                         tint = if (confirmPasswordVisibility.value) MaterialTheme.colors.primary else Color.Gray,
                                         contentDescription = "hide password"
                                     )
@@ -199,36 +204,46 @@ fun Register(navController: NavController) {
                                 auth.createUserWithEmailAndPassword(email.value,password.value).addOnCompleteListener{ task ->
                                     if(task.isSuccessful){
                                         val user = FirebaseAuth.getInstance().currentUser
-/*
+                                        val sampleUser = User(userName = name.value,email.value)
+
                                         user?.let { firebaseUser ->
                                             val userData = hashMapOf(
-                                                "username" to username,
-                                                "email" to email
+                                                "user_name" to name,
+                                                "mail" to email
                                             )
                                             val db = Firebase.firestore
                                             db.collection("users")
-                                                .document(firebaseUser.uid)
-                                                .set(userData)
+                                                .document(firebaseUser.uid)    // firebaseUser.uid                                                  // firebaseUser.uid
+                                                .set(sampleUser)
                                                 .addOnSuccessListener {
+                                                    snackBarMessage.value = "firestore successfully stored the user"
+                                                    showSnackBar.value = true
                                                     // User account and data saved successfully
                                                     // Proceed with any additional actions or navigation
+                                                    val intent = Intent(contex,MainActivity::class.java)
+                                                    contex.startActivity(intent)
+                                                    snackBarMessage.value = "Successful!"
+                                                    showSnackBar.value = true
+                                                    onFinishActivity.invoke()
                                                 }
                                                 .addOnFailureListener { exception ->
+                                                    val message = exception.message
+                                                    snackBarMessage.value = message.toString()
+                                                    showSnackBar.value = true
                                                     // Failed to save user data
                                                     // Handle the error or display an error message to the user
                                                 }
                                         }
-*/
-                                        val intent = Intent(contex,MainActivity::class.java)
-                                        contex.startActivity(intent)
-                                        snackBarMessage.value = "Successful!"
-                                        showSnackBar.value = true
+
+
                                     }else{
                                         val exception = task.exception as? FirebaseAuthException
                                         val errorMessage = exception?.message
                                         showSnackBar.value = true
                                         errorMessage.let {
-                                            snackBarMessage.value = it!!
+                                            if (it != null) {
+                                                snackBarMessage.value = it
+                                            }
                                         }
                                     }
                                 }

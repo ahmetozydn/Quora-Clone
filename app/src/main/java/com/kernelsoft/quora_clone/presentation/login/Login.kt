@@ -3,7 +3,6 @@ package com.kernelsoft.quora_clone.presentation.login
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -13,10 +12,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,9 +23,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -37,11 +35,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.kernelsoft.quora_clone.MainActivity
 import com.kernelsoft.quora_clone.R
 import com.kernelsoft.quora_clone.presentation.navigation.NavigationGraph
+import com.kernelsoft.quora_clone.ui.theme.Gray50
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -50,8 +50,14 @@ class Login : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val systemUiController = rememberSystemUiController()
+            systemUiController.setStatusBarColor(Color.White)
+            val finisActivity = remember { mutableStateOf(false) }
             val navController = rememberNavController()
-            NavigationGraph(navController)
+            NavigationGraph(navController, finisActivity)
+            if(finisActivity.value){
+                finish()
+            }
         }
         // val finishActivity = remember { mutableStateOf(false) }
         /*LoginPage(this@Login,finishActivity)
@@ -67,7 +73,7 @@ class Login : ComponentActivity() {
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun LoginPage(navController: NavController) { //login: Login, finishActivity: MutableState<Boolean>
+fun LoginPage(navController: NavController, onFinishActivity: () -> Unit ) { //login: Login, finishActivity: MutableState<Boolean>
 
     //val keyboardController = LocalSoftwareKeyboardController.current
     val passwordValue = remember { mutableStateOf("") }
@@ -148,7 +154,7 @@ fun LoginPage(navController: NavController) { //login: Login, finishActivity: Mu
                                     passwordVisibility.value = !passwordVisibility.value
                                 }) {
                                     Icon(
-                                        imageVector = Icons.Default.Favorite, // password_hide
+                                        imageVector = ImageVector.vectorResource(R.drawable.password_hide), // password_hide
                                         tint = if (passwordVisibility.value) MaterialTheme.colors.primary else Color.Gray,
                                         contentDescription = "null"
                                     )
@@ -191,16 +197,19 @@ fun LoginPage(navController: NavController) { //login: Login, finishActivity: Mu
                                         .addOnCompleteListener { task ->
                                             if (task.isSuccessful) {
                                                 // successful
-                                                val user = auth.currentUser                                                // successful
+                                                val user = auth.currentUser
                                                 val intent = Intent(contex, MainActivity::class.java)
                                                 contex.startActivity(intent) //TODO(finish activity)
+                                                onFinishActivity.invoke()
                                             } else {
                                                 // failed
                                                 isButtonClicked = false
                                                 val exception = task.exception as? FirebaseAuthException
                                                 val errorMessage = exception?.message
-                                                snackBarMessage.value = errorMessage.toString()
-                                                showSnackBar.value = true
+                                                if(errorMessage.isNullOrEmpty()){
+                                                    snackBarMessage.value = errorMessage.toString()
+                                                    showSnackBar.value = true
+                                                }
                                             }
                                         }
                                 }

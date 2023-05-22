@@ -7,8 +7,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.*
@@ -33,22 +36,32 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.res.vectorResource
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.kernelsoft.quora_clone.presentation.components.CustomizableAppBar
-import com.kernelsoft.quora_clone.presentation.navigation.BottomNavigationGraph
-import com.kernelsoft.quora_clone.presentation.navigation.ScreenModel
+import com.kernelsoft.quora_clone.presentation.navigation.*
 import com.kernelsoft.quora_clone.presentation.navigation.ScreenModel.BottomBarScreen
 import com.kernelsoft.quora_clone.ui.theme.*
 import com.kernelsoft.quora_clone.viewmodel.HomeViewModel
+
+typealias SheetContent = @Composable ColumnScope.() -> Unit
 
 
 class MainActivity : ComponentActivity() {
@@ -61,8 +74,14 @@ class MainActivity : ComponentActivity() {
         val viewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
 
+        window.navigationBarColor = ContextCompat.getColor(this, R.color.white)
+
         setContent {
             QuoracloneTheme {
+                val scope = rememberCoroutineScope()
+
+                val systemUiController = rememberSystemUiController()
+                systemUiController.setStatusBarColor(Gray50)
                 val sheetState1 = rememberModalBottomSheetState(
                     initialValue = ModalBottomSheetValue.Hidden,
                     animationSpec = SwipeableDefaults.AnimationSpec,
@@ -71,6 +90,41 @@ class MainActivity : ComponentActivity() {
                     },
                     //isSkipHalfExpanded = true
                 )
+                val sheetContent = remember {
+                    mutableStateOf<@Composable () -> Unit>({
+                        Box(
+                            modifier = Modifier.defaultMinSize(minHeight = 100.dp).fillMaxWidth()
+                        )
+                    })
+                }
+                sheetContent.value = @Composable {
+                    Box(
+                        modifier = Modifier.defaultMinSize(minHeight = 100.dp).fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(16.dp).fillMaxSize()) {
+                            Text("Change Content Again", color = Color.Black)
+                            Button(onClick = { }) {
+                                Text("Change Content Again", color = Color.Black)
+                            }
+                        }
+                    }
+                }
+
+                val bottomSheetState1 = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
+                var bottomSheetContent: SheetContent? by remember { mutableStateOf(null) }
+
+                val showBottomSheet: (SheetContent) -> Unit = { content: SheetContent ->
+                    bottomSheetContent = content
+                    scope.launch { bottomSheetState1.show() }
+                }
+                val hideBottomSheet: () -> Unit = {
+                    scope.launch {
+                        bottomSheetState1.hide()
+                        bottomSheetContent = null
+                    }
+                }
+                //val sheetContent = remember { mutableStateOf<@Composable () -> Unit> { } }
+                val whichContent = remember { mutableStateOf(0) }
                 val myState by viewModel.open.collectAsState()
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val myViewModel: HomeViewModel by viewModels()
@@ -99,7 +153,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val composableScope = rememberCoroutineScope()
                 val viewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
 
                 lifecycleScope.launch {
@@ -163,19 +216,95 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }*/
+
+                val scaffoldState = rememberScaffoldState()
+                val contentType = remember { mutableStateOf(1) }
                 ModalBottomSheetLayout(
+                    sheetContent = {
+                        when (contentType.value) {
+                            1 -> {
+                                Box(Modifier.defaultMinSize(minHeight = 1.dp)) {}
+                            }
+                            2 -> {
+                                if (keyboardController != null) {
+                                    InitialContent(sheetState1, keyboardController)
+                                }
+                            }
+                            3 -> {
+                                BottomSheet(sheetState1, keyboardController)
+                            }
+                        }
+                        /*if(sheetState1.currentValue == ModalBottomSheetValue.Hidden){
+
+                        }else{
+                            Column (modifier = Modifier.wrapContentSize()){
+                                CustomizedBottomSheetContent(sheetContent){
+                                    sheetContent.value
+                                }
+                            }
+                        }*/
+                        /*Box(Modifier.fillMaxSize()) {
+                            *//* sheet content *//*
+
+
+
+                        }*/
+
+                    },
                     sheetState = sheetState1,
-                    sheetContent = { BottomSheet(sheetState1, keyboardController) },
                     modifier = Modifier.fillMaxSize().fillMaxHeight().background(Color.LightGray),
                     sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     sheetContentColor = Color.Transparent,
                     scrimColor = Color.Transparent
                 ) {
                     Scaffold(
+                        scaffoldState = scaffoldState,
+                        drawerGesturesEnabled = scaffoldState.drawerState.isOpen,
+                        drawerContent = {
+                            DrawerHeader()
+                            DrawerBody(
+                                items = listOf(
+                                    MenuItem(
+                                        id = "bookmarks",
+                                        title = "Bookmarks",
+                                        contentDescription = "Go to bookmarks",
+                                        icon = ImageVector.vectorResource(R.drawable.vc_bookmark)
+                                    ),
+                                    MenuItem(
+                                        id = "settings",
+                                        title = "Settings",
+                                        contentDescription = "Go to settings screen",
+                                        icon = Icons.Default.Settings
+                                    ),
+                                    MenuItem(
+                                        id = "help",
+                                        title = "Help",
+                                        contentDescription = "Get help",
+                                        icon = Icons.Default.Info
+                                    ),
+                                ),
+                                onItemClick = {
+                                    println("Clicked on ${it.title}")
+                                },
+                                sheetContent = sheetContent,
+                                contentType = contentType
+                            )
+                            {
+                                coroutineScope.launch {
+                                    sheetState1.animateTo(ModalBottomSheetValue.Expanded)
+                                    sheetState1.show()
+                                }
+                            }
+                        },
                         // topBar = { AppBar("Home",sheetState) },
                         bottomBar = { BottomBar(navController = navController) },
                     ) {
-                        BottomNavigationGraph(navController = navController, sheetState1)
+                        BottomNavigationGraph(
+                            navController = navController,
+                            sheetState1,
+                            scaffoldState,
+                            contentType
+                        )
                     }
                 }
             }
@@ -183,6 +312,91 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+sealed class Screen {
+    object Screen1 : Screen()
+    object Screen2 : Screen()
+}
+
+@OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
+@Composable
+fun InitialContent(
+    sheetState: ModalBottomSheetState,
+    keyboardController: SoftwareKeyboardController
+) {
+    val height = remember { mutableStateOf(1) }
+
+    val scope = rememberCoroutineScope()
+    Column(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
+        IconButton(modifier = Modifier.onSizeChanged { height.value = it.height }, onClick = {
+            scope.launch {
+                //sheetState.hide()
+                sheetState.animateTo(ModalBottomSheetValue.Hidden)
+            }
+            keyboardController.hide()
+        }) {
+            Icon(
+                painterResource(R.drawable.vc_close),
+                "close",
+                tint = DarkRed
+            )
+        }
+        Divider(modifier = Modifier.fillMaxWidth().height(1.dp).background(Gray50))
+
+        Text(
+            modifier = Modifier.fillMaxWidth().height(height.value.dp),
+            text = "Languages",
+            color = Color.Black,
+            textAlign = TextAlign.Center
+        )
+        Divider(modifier = Modifier.fillMaxWidth().height(1.dp).background(Gray50))
+        Button(modifier = Modifier.wrapContentHeight().background(Color.White).height(height.value.dp).fillMaxWidth()
+            .shadow(0.dp),
+            onClick = {},
+            shape = RoundedCornerShape(0.dp),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Color.White,
+                contentColor = Color.White
+            ),
+            elevation = ButtonDefaults.elevation(0.dp),
+            border = BorderStroke(0.dp, color = Color.White)
+
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Logout",
+                color = DarkRed,
+                textAlign = TextAlign.Center
+            )
+        }
+        Divider(modifier = Modifier.fillMaxWidth().height(1.dp).background(Gray50))
+
+    }
+}
+
+@Composable
+fun SecondContent() {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text("Second Content")
+    }
+}
+
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+@Composable
+fun CustomizedBottomSheetContent(
+    sheetContent: MutableState<@Composable () -> Unit>,
+    function: () -> @Composable () -> Unit
+) {
+    Scaffold(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().background(Color.Blue)) {
+            repeat(6) {
+                Text("hello world", color = Color.Black)
+            }
+            Column(modifier = Modifier.fillMaxWidth().height(40.dp).background(color = Color.Red)) {
+                sheetContent.value
+            }
+        }
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
@@ -353,7 +567,7 @@ fun RowScope.AddItem(
         icon = {
             Icon(
 
-                imageVector = screen.icon,
+                imageVector = screen.icon, // TODO if selected filled.icon else outlined.icon
                 contentDescription = "Navigation Icon",
                 tint = iconColor,
             )
@@ -374,20 +588,23 @@ fun RowScope.AddItem(
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(scaffoldState: ScaffoldState) {
+    val openNavigationDrawer = remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     Scaffold(topBar = {
-        CustomizableAppBar {
+        CustomizableAppBar({
             TopAppBar {
                 Text("profile")
             }
-
+        }) {
+            openNavigationDrawer.value = true
         }
     }) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Magenta),
-            contentAlignment = Alignment.Center
+                .fillMaxSize().fillMaxWidth()
+                .background(Gray50),
+            contentAlignment = Alignment.CenterStart,
         ) {
             Text(
                 text = "PROFILE",
@@ -397,6 +614,15 @@ fun ProfileScreen() {
             )
         }
     }
+    if (openNavigationDrawer.value) {
+        LaunchedEffect(Unit) {
+            scope.launch {
+                scaffoldState.drawerState.open()
+            }
+        }
+        openNavigationDrawer.value = false
+    }
+
 }
 
 @Composable
@@ -479,7 +705,7 @@ fun BottomSheet(
     var tagTextField by remember { mutableStateOf("") }
     var isTextFieldEmpty by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
-    val buttonBackgroundColor = if (isTextFieldEmpty) LigtRed else DarkRed
+    val buttonBackgroundColor = if (isTextFieldEmpty) LightRed else DarkRed
     val isTextFieldFocused = remember { mutableStateOf(true) }
     //val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(true) {
@@ -617,6 +843,8 @@ fun BottomSheet(
         }
     }
 }
+
+
 
 
 
