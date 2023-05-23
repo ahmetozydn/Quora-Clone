@@ -47,87 +47,90 @@ fun HomeScreen(
     val coroutineScope = rememberCoroutineScope()
     val scope = rememberCoroutineScope()
     Scaffold(topBar = {
-        CustomizableAppBar({
-            val appBarHorizontalPadding = 4.dp
-            val titleIconModifier = Modifier.fillMaxHeight()
-                .fillMaxWidth() // width(1230.dp - appBarHorizontalPadding)
+        CustomizableAppBar(
+            onNavigationIconClick = {
+                onNavigationClick.value = true
+
+            }, content = {
+                val appBarHorizontalPadding = 4.dp
+                val titleIconModifier = Modifier.fillMaxHeight()
+                    .fillMaxWidth() // width(1230.dp - appBarHorizontalPadding)
 
 
-            Box(Modifier.height(32.dp).background(Gray50)) {
-                Row(
-                    Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ProvideTextStyle(value = MaterialTheme.typography.h2) {
+                Box(Modifier.height(32.dp).background(Gray50)) {
+                    Row(
+                        Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ProvideTextStyle(value = MaterialTheme.typography.h2) {
+                            CompositionLocalProvider(
+                                LocalContentAlpha provides ContentAlpha.high,
+                            ) {
+                                Text(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                    fontWeight = FontWeight.Bold,
+                                    style = TextStyle(fontSize = 18.sp),
+                                    maxLines = 1,
+                                    text = "Home",
+                                )
+                            }
+                        }
+                    }
+                    //actions
+                    CompositionLocalProvider(LocalContentAlpha provides ContentAlpha.medium) {
+                        Row(
+                            Modifier.fillMaxHeight(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically,
+                            content = actions
+                        )
+                    }
+                    Row(
+                        titleIconModifier,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
                         CompositionLocalProvider(
                             LocalContentAlpha provides ContentAlpha.high,
                         ) {
-                            Text(
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center,
-                                fontWeight = FontWeight.Bold,
-                                style = TextStyle(fontSize = 18.sp),
-                                maxLines = 1,
-                                text = "Home",
-                            )
-                        }
-                    }
-                }
-                //actions
-                CompositionLocalProvider(LocalContentAlpha provides ContentAlpha.medium) {
-                    Row(
-                        Modifier.fillMaxHeight(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically,
-                        content = actions
-                    )
-                }
-                Row(
-                    titleIconModifier,
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    CompositionLocalProvider(
-                        LocalContentAlpha provides ContentAlpha.high,
-                    ) {
-                        IconButton(
-                            modifier = Modifier.align(alignment = Alignment.CenterVertically),
-                            onClick = {
-                                contentType.value = 3
-                                /*coroutineScope.launch {
-                                    keyboardController?.show()
-                                    bottomSheetState.animateTo(ModalBottomSheetValue.Expanded)
-                                    *//*     LaunchedEffect(key1 = Unit) {
+                            IconButton(
+                                modifier = Modifier.align(alignment = Alignment.CenterVertically),
+                                onClick = {
+                                    contentType.value = 3
+                                    /*coroutineScope.launch {
+                                        keyboardController?.show()
+                                        bottomSheetState.animateTo(ModalBottomSheetValue.Expanded)
+                                        *//*     LaunchedEffect(key1 = Unit) {
                                                  focusRequester.requestFocus()
                                              }*//*
                                     }*/
-                                coroutineScope.launch {
-                                    sheetState.animateTo(ModalBottomSheetValue.Expanded)
-                                    keyboardController?.show()
+                                    coroutineScope.launch {
+                                        sheetState.animateTo(ModalBottomSheetValue.Expanded)
+                                        keyboardController?.show()
+                                    }
+                                    //viewModel.sheetState.value.currentValue= ModalBottomSheetValue.Expanded
+                                    //viewModel.showBottomSheet()
+                                    // viewModel.isOpenBottomSheet.value = true
+                                    println("the value of sheetstate is ${viewModel.sheetState.value.currentValue}")
+                                    println("is visible? ${viewModel.sheetState.value.isVisible}")
+                                    //showBottomSheet = true
+                                    viewModel.isOpenBottomSheet.value = true
+                                    println("value of itttttttttttttt ${viewModel.isOpenBottomSheet}")
+                                    // viewModel.openBottomSheet()
+                                },
+                                enabled = true,
+                                content = {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.vc_add),
+                                        contentDescription = "Add Question",
+                                    )
                                 }
-                                //viewModel.sheetState.value.currentValue= ModalBottomSheetValue.Expanded
-                                //viewModel.showBottomSheet()
-                                // viewModel.isOpenBottomSheet.value = true
-                                println("the value of sheetstate is ${viewModel.sheetState.value.currentValue}")
-                                println("is visible? ${viewModel.sheetState.value.isVisible}")
-                                //showBottomSheet = true
-                                viewModel.isOpenBottomSheet.value = true
-                                println("value of itttttttttttttt ${viewModel.isOpenBottomSheet}")
-                                // viewModel.openBottomSheet()
-                            },
-                            enabled = true,
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.vc_add),
-                                contentDescription = "Add Question",
                             )
                         }
                     }
                 }
-            }
-        },{
-            onNavigationClick.value = true
-        })
+            })
     }) {
         Box(Modifier.fillMaxSize().background(Color.White)) {
             LazyColumn {
@@ -145,7 +148,7 @@ fun HomeScreen(
           bottomSheetState.animateTo(ModalBottomSheetValue.Expanded)
           showBottomSheet = false
       }*/
-    if(onNavigationClick.value){
+    if (onNavigationClick.value) {
         LaunchedEffect(Unit) {
             scope.launch {
                 scaffoldState.drawerState.open()

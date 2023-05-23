@@ -1,17 +1,16 @@
 package com.kernelsoft.quora_clone
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.indication
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.*
@@ -34,9 +33,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -45,7 +47,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
@@ -54,15 +57,23 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.ktx.Firebase
+import com.kernelsoft.quora_clone.presentation.components.AppBarWithBackButton
 import com.kernelsoft.quora_clone.presentation.components.CustomizableAppBar
+import com.kernelsoft.quora_clone.presentation.login.Login
 import com.kernelsoft.quora_clone.presentation.navigation.*
 import com.kernelsoft.quora_clone.presentation.navigation.ScreenModel.BottomBarScreen
 import com.kernelsoft.quora_clone.ui.theme.*
+import com.kernelsoft.quora_clone.util.Utils
 import com.kernelsoft.quora_clone.viewmodel.HomeViewModel
 
 typealias SheetContent = @Composable ColumnScope.() -> Unit
 
+typealias ComposableFunction = @Composable () -> Unit
 
 class MainActivity : ComponentActivity() {
     //private val homeViewModel: HomeViewModel by viewModels()
@@ -71,6 +82,8 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val currentUser = FirebaseAuth.getInstance().currentUser
+
         val viewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
 
@@ -79,7 +92,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             QuoracloneTheme {
                 val scope = rememberCoroutineScope()
-
                 val systemUiController = rememberSystemUiController()
                 systemUiController.setStatusBarColor(Gray50)
                 val sheetState1 = rememberModalBottomSheetState(
@@ -97,6 +109,7 @@ class MainActivity : ComponentActivity() {
                         )
                     })
                 }
+                val navigationItemClicked = remember { mutableStateOf(false) }
                 sheetContent.value = @Composable {
                     Box(
                         modifier = Modifier.defaultMinSize(minHeight = 100.dp).fillMaxWidth()
@@ -133,6 +146,7 @@ class MainActivity : ComponentActivity() {
                 var initialValue = if (myState) ModalBottomSheetValue.Expanded else {
                     ModalBottomSheetValue.Hidden
                 }
+                val contentType = remember{ mutableStateOf(1) }
                 lifecycleOwner.lifecycleScope.launchWhenStarted {
                     viewModel.open.collect { data ->
                         println("helllllllllllllllllllllllllllllllooooooooooooooooooooooooo")
@@ -194,8 +208,16 @@ class MainActivity : ComponentActivity() {
                 }
                 val bottomSheetState by homeViewModel.sheetState
                 val navController = rememberNavController()
-
+                val scaffoldState = rememberScaffoldState()
                 val keyboardController = LocalSoftwareKeyboardController.current
+                if(navigationItemClicked.value){
+                    scope.launch {
+                        scaffoldState.drawerState.close()
+                    }
+                    navController.navigate("bookmarks")
+                    Bookmarks(navController)
+                    navigationItemClicked.value = false
+                }
 /*                val sheetState = rememberModalBottomSheetState(
                     initialValue = ModalBottomSheetValue.Hidden,
                     animationSpec = SwipeableDefaults.AnimationSpec,
@@ -217,17 +239,20 @@ class MainActivity : ComponentActivity() {
                         }
                     }*/
 
-                val scaffoldState = rememberScaffoldState()
-                val contentType = remember { mutableStateOf(1) }
+
                 ModalBottomSheetLayout(
                     sheetContent = {
                         when (contentType.value) {
                             1 -> {
-                                Box(Modifier.defaultMinSize(minHeight = 1.dp)) {}
+                                Box(Modifier.defaultMinSize(minHeight = 1.dp)) {} // TODO create a sheetcontenttype sealed class if that works
                             }
                             2 -> {
                                 if (keyboardController != null) {
-                                    InitialContent(sheetState1, keyboardController)
+                                    InitialContent(sheetState1, keyboardController) {
+                                        /*val intent = Intent(this@MainActivity, Login::class.java)
+                                        startActivity(intent)
+                                        finish()*/
+                                    }
                                 }
                             }
                             3 -> {
@@ -284,10 +309,12 @@ class MainActivity : ComponentActivity() {
                                     ),
                                 ),
                                 onItemClick = {
-                                    println("Clicked on ${it.title}")
+                                    navigationItemClicked.value = true
+
                                 },
                                 sheetContent = sheetContent,
-                                contentType = contentType
+                                contentType = contentType,
+                                //currentUser = currentUser // app can be crushed
                             )
                             {
                                 coroutineScope.launch {
@@ -312,22 +339,32 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class Screen {
-    object Screen1 : Screen()
-    object Screen2 : Screen()
-}
+/*sealed class SheetContentType(val contentType: String,val x: () -> Unit = @Composable{}){
+    @OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
+    object Screen1 : SheetContentType("add question",@Composable {  })
+    object Screen2 : SheetContentType("options")
+}*/
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun InitialContent(
     sheetState: ModalBottomSheetState,
-    keyboardController: SoftwareKeyboardController
+    keyboardController: SoftwareKeyboardController,
+    onLogOut: () -> Unit
 ) {
-    val height = remember { mutableStateOf(1) }
+    var showCustomDialog by remember {
+        mutableStateOf(false)
+    }
 
+    val height = remember { mutableStateOf(1f) }
+    var columnHeightDp by remember {
+        mutableStateOf(0.dp)
+    }
     val scope = rememberCoroutineScope()
-    Column(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-        IconButton(modifier = Modifier.onSizeChanged { height.value = it.height }, onClick = {
+    Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().height(IntrinsicSize.Max)) {
+        IconButton(modifier = Modifier.onGloballyPositioned { coordinates ->
+            // Set column height using the LayoutCoordinates
+        }.weight(1f), onClick = {
             scope.launch {
                 //sheetState.hide()
                 sheetState.animateTo(ModalBottomSheetValue.Hidden)
@@ -341,17 +378,74 @@ fun InitialContent(
             )
         }
         Divider(modifier = Modifier.fillMaxWidth().height(1.dp).background(Gray50))
+        CompositionLocalProvider(
+            LocalMinimumTouchTargetEnforcement provides false,
+        ) {
+            TextButton(
+                modifier = Modifier.wrapContentHeight().weight(1f).background(Color.White)
+                    .fillMaxWidth().height(48.dp).background(Color.Gray)
+                    .shadow(0.dp),
+                onClick = {
 
-        Text(
-            modifier = Modifier.fillMaxWidth().height(height.value.dp),
-            text = "Languages",
-            color = Color.Black,
-            textAlign = TextAlign.Center
-        )
+                    showCustomDialog = !showCustomDialog
+                },
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color.White,
+                    contentColor = Color.White
+                ),
+                elevation = ButtonDefaults.elevation(0.dp),
+                border = BorderStroke(0.dp, color = Color.White)
+            ) {
+                Text(
+                    modifier = Modifier.fillMaxWidth().clickable { },
+                    text = "Languages",
+                    color = Color.Black,
+                    textAlign = TextAlign.Center, fontSize = 16.sp
+                )
+            }
+        }
+
+
         Divider(modifier = Modifier.fillMaxWidth().height(1.dp).background(Gray50))
-        Button(modifier = Modifier.wrapContentHeight().background(Color.White).height(height.value.dp).fillMaxWidth()
-            .shadow(0.dp),
-            onClick = {},
+        CompositionLocalProvider(
+            LocalMinimumTouchTargetEnforcement provides false,
+        ) {
+            TextButton(
+                modifier = Modifier.wrapContentHeight().weight(1f).background(Color.White)
+                    .fillMaxWidth().height(48.dp).background(Color.Gray)
+                    .shadow(0.dp),
+                onClick = {
+                    scope.launch {
+                        sheetState.animateTo(ModalBottomSheetValue.Hidden)
+                    }
+                    showCustomDialog = !showCustomDialog
+                },
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color.White,
+                    contentColor = Color.White
+                ),
+                elevation = ButtonDefaults.elevation(0.dp),
+                border = BorderStroke(0.dp, color = Color.White)
+
+            ) {
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = "Logout",
+                    color = DarkRed,
+                    textAlign = TextAlign.Center,
+                    fontSize = 16.sp
+                )
+            }
+        }
+        /*Button(
+            modifier = Modifier.wrapContentHeight().weight(1f).background(Color.White)
+                .fillMaxWidth()
+                .shadow(0.dp),
+            onClick = {
+                showCustomDialog = !showCustomDialog
+            },
             shape = RoundedCornerShape(0.dp),
             colors = ButtonDefaults.buttonColors(
                 backgroundColor = Color.White,
@@ -365,18 +459,26 @@ fun InitialContent(
                 modifier = Modifier.fillMaxWidth(),
                 text = "Logout",
                 color = DarkRed,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                fontSize = 16.sp
             )
-        }
+        }*/
         Divider(modifier = Modifier.fillMaxWidth().height(1.dp).background(Gray50))
 
     }
-}
+    val context = LocalContext.current
+    if (showCustomDialog) {
+        CustomAlertDialog(
+            onDismiss = {
+                showCustomDialog = !showCustomDialog
+            },
+            onExit = {
+                val intent = Intent(context, Login::class.java)
+                context.startActivity(intent)
+                val activity = (context as? Activity)
 
-@Composable
-fun SecondContent() {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text("Second Content")
+                activity?.finish()
+            })
     }
 }
 
@@ -406,11 +508,6 @@ fun DefaultPreview() {
     }
 }
 
-@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
-@Composable
-fun MainScreen() {
-
-}
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
 @SuppressLint("UnrememberedMutableState", "CoroutineCreationDuringComposition")
@@ -702,12 +799,28 @@ fun BottomSheet(
 ) {
     var descriptionTextField by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
-    var tagTextField by remember { mutableStateOf("") }
+    var tagTextField = remember { mutableStateOf("") }
     var isTextFieldEmpty by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
     val buttonBackgroundColor = if (isTextFieldEmpty) LightRed else DarkRed
     val isTextFieldFocused = remember { mutableStateOf(true) }
+    var tagList = remember { mutableStateListOf<String>() }
+    val mutableList = remember { mutableStateListOf<String>() }
+    val context = LocalContext.current
     //val keyboardController = LocalSoftwareKeyboardController.current
+
+    val sampleTags = remember {
+        mutableStateListOf<String>(
+            "general",
+            "psychology",
+            "programming",
+            "economy",
+            "life",
+            "artificial-intelligence",
+            "java"
+        )
+    }
+
     LaunchedEffect(true) {
         focusRequester.requestFocus()
     }
@@ -806,46 +919,104 @@ fun BottomSheet(
         LaunchedEffect(Unit) {
             focusRequester.requestFocus()
         }
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(8.dp, 12.dp)
+        ) {
+            items(tagList) { eachTag ->
+                val currentItem by rememberUpdatedState(eachTag)
+                IconButton(onClick = {
+                    //tagList = tagList.filter { it != currentItem }.toMutableList() as SnapshotStateList<String>
+                    tagList.remove(currentItem)
+                }) {
+                    Icon(painterResource(R.drawable.vc_close), "null")
+                }
+                Card(contentColor = DarkRed, backgroundColor = DarkRed) {
+                    Text(
+                        modifier = Modifier.padding(8.dp),
+                        text = eachTag,
+                        fontSize = 16.sp,
+                        color = Color.White
+                    )
+                }
+            }
+            //
+        }
+
         OutlinedTextField(
             modifier = Modifier.fillMaxWidth().padding(0.dp),
-            value = tagTextField,
+            value = tagTextField.value,
             label = { Text(text = "Tag") },
             onValueChange = {
-                tagTextField = it
+                tagTextField.value = it
+                if (it.last() == ' '&& Character.isDigit(it.first())  && it != " ") { //there is a crash TODO
+                    tagList.add(tagTextField.value.trim())
+                    tagTextField.value = ""
+                }
                 if (isTextFieldEmpty) {
                     isTextFieldEmpty = false
                 }
             },
-            isError = isTextFieldEmpty,
+            trailingIcon = {
+                Icon(Icons.Default.Clear,
+                    contentDescription = "clear text",
+                    modifier = Modifier
+                        .clickable {
+                            tagTextField.value = ""
+                        }
+                )
+            },
+            // isError = isTextFieldEmpty,
             placeholder = { Text(text = "Enter tag(s) : General, Life, Economy, Programming \u2022") },
             singleLine = true,
             colors = TextFieldDefaults.outlinedTextFieldColors(Color.Black)
             /*           label = "Description",
                                    placeholder = "Not compulsory"*/
         )
-
-        Button(
-            onClick = {
-                // Handle button click
-            },
-            modifier = Modifier
-                .padding(0.dp)
-                .defaultMinSize()
-                .background(Color.Blue)
-                .clickable { /* Handle button click */ }
-        ) {
-            Text(
-                text = "Text Button",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
+        Text(
+            modifier = Modifier.padding(4.dp, 8.dp),
+            text = "Popular Tags:",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+        LazyRow(modifier = Modifier.padding(4.dp).wrapContentHeight()) {
+            items(sampleTags) { eachSample ->
+                val currentItem by rememberUpdatedState(eachSample)
+                Card(modifier = Modifier.border(2.dp, Gray50).weight(1f).padding(2.dp).clickable {
+                    if (!tagList.contains(currentItem)) {
+                        tagList.add(currentItem)
+                    }
+                }) {
+                    Text(modifier = Modifier.padding(4.dp), text = eachSample, color = Color.Black)
+                }
+                Box(modifier = Modifier.weight(1f).background(Color.Blue)) {
+                    Text(text = "• \u2219", color = Color.Black, textAlign = TextAlign.Center)
+                }
+            }
         }
     }
 }
 
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+@Composable
+fun Bookmarks(navController: NavController){
+    Scaffold(
+        modifier = Modifier.fillMaxSize().background(Color.Gray,),
+        topBar = {
+            AppBarWithBackButton(
+                content = {Text("Bookmarks", fontWeight = FontWeight.Bold)},
+                navController = navController
+            )
+        }
 
-
+    ) {
+        Column {
+            repeat(6){
+                Text("welcome to bookmarks!.", color = Color.Blue)
+            }
+        }
+    }
+}
 
 
 

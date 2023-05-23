@@ -3,6 +3,7 @@ package com.kernelsoft.quora_clone.presentation.login
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -11,8 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.*
@@ -41,7 +40,7 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.kernelsoft.quora_clone.MainActivity
 import com.kernelsoft.quora_clone.R
 import com.kernelsoft.quora_clone.presentation.navigation.NavigationGraph
-import com.kernelsoft.quora_clone.ui.theme.Gray50
+import com.kernelsoft.quora_clone.util.Utils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -49,6 +48,13 @@ import kotlinx.coroutines.launch
 class Login : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.putExtra(Utils.user,currentUser)
+            startActivity(intent)
+            finish()
+        }
         setContent {
             val systemUiController = rememberSystemUiController()
             systemUiController.setStatusBarColor(Color.White)
@@ -177,11 +183,11 @@ fun LoginPage(navController: NavController, onFinishActivity: () -> Unit ) { //l
                         Button(
                             enabled = !isButtonClicked,
                             onClick = {
-                                if (emailValue.value.isEmpty() || passwordValue.value.isEmpty()) {
-                                    if (emailValue.value.isEmpty()) {
+                                if (emailValue.value.trim().isEmpty() || passwordValue.value.trim().isEmpty()) {
+                                    if (emailValue.value.trim().isEmpty()) {
                                         isEmailTextFieldEmpty.value = true
                                     }
-                                    if (passwordValue.value.isEmpty()) {
+                                    if (passwordValue.value.trim().isEmpty()) {
                                         isPasswordTextFieldEmpty.value = true
                                     }
                                     snackBarMessage.value = "Empty Fields"
@@ -191,13 +197,11 @@ fun LoginPage(navController: NavController, onFinishActivity: () -> Unit ) { //l
                                 if (!isButtonClicked) {
                                     isButtonClicked = true
                                     auth.signInWithEmailAndPassword(
-                                        emailValue.value,
-                                        passwordValue.value
-                                    )
-                                        .addOnCompleteListener { task ->
+                                        emailValue.value.trim(),
+                                        passwordValue.value.trim()
+                                    ).addOnCompleteListener { task ->
                                             if (task.isSuccessful) {
                                                 // successful
-                                                val user = auth.currentUser
                                                 val intent = Intent(contex, MainActivity::class.java)
                                                 contex.startActivity(intent) //TODO(finish activity)
                                                 onFinishActivity.invoke()
@@ -205,13 +209,22 @@ fun LoginPage(navController: NavController, onFinishActivity: () -> Unit ) { //l
                                                 // failed
                                                 isButtonClicked = false
                                                 val exception = task.exception as? FirebaseAuthException
+                                                Toast.makeText(contex,exception?.localizedMessage,Toast.LENGTH_LONG).show()
                                                 val errorMessage = exception?.message
                                                 if(errorMessage.isNullOrEmpty()){
                                                     snackBarMessage.value = errorMessage.toString()
                                                     showSnackBar.value = true
                                                 }
                                             }
-                                        }
+
+                                        }/*.addOnFailureListener{ exception ->
+                                            val ex = exception as? FirebaseAuthException
+                                            val errorMessage = ex?.message
+                                            if(errorMessage.isNullOrEmpty()){
+                                                snackBarMessage.value = errorMessage.toString()
+                                                showSnackBar.value = true
+                                            }
+                                        }*/
                                 }
 
                             },

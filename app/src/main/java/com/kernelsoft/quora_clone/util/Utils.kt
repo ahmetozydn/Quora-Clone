@@ -13,3 +13,6 @@ fun ShowSnackBarMessage(message: String) {
         modifier = Modifier.padding(8.dp),
     ) { Text(message) }
 }
+object Utils{
+    val user = "USER"
+}

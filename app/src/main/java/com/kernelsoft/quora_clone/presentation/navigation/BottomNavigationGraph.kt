@@ -8,6 +8,7 @@ import androidx.compose.runtime.MutableState
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.kernelsoft.quora_clone.Bookmarks
 import com.kernelsoft.quora_clone.ProfileScreen
 import com.kernelsoft.quora_clone.SettingsScreen
 import com.kernelsoft.quora_clone.presentation.screens.HomeScreen
@@ -32,6 +33,9 @@ fun BottomNavigationGraph(
         }
         composable(route = ScreenModel.BottomBarScreen.Settings.route) {
             SettingsScreen()
+        }
+        composable(route = "bookmarks") {
+            Bookmarks(navController)
         }
     }
 }

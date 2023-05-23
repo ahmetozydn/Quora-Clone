@@ -2,15 +2,12 @@ package com.kernelsoft.quora_clone.presentation.login
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Face
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,14 +26,12 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.kernelsoft.quora_clone.MainActivity
 import com.kernelsoft.quora_clone.R
 import com.kernelsoft.quora_clone.data.model.User
 import com.kernelsoft.quora_clone.ui.theme.DarkRed
-import com.kernelsoft.quora_clone.util.ShowSnackBarMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -187,21 +182,21 @@ fun Register(navController: NavController, onFinishActivity: () -> Unit) {
                         Spacer(modifier = Modifier.padding(10.dp))
                         Button(
                             onClick = {
-                                if (name.value.isEmpty() || password.value.isEmpty() || email.value.isEmpty() || confirmPassword.value.isEmpty()) {
-                                    if (name.value.isEmpty()) { isNameFieldEmpty.value = true }
-                                    if (email.value.isEmpty()) { isEmailFieldEmpty.value = true }
-                                    if (password.value.isEmpty()) { isPasswordFieldEmpty.value = true }
+                                if (name.value.trim().isEmpty() || password.value.trim().isEmpty() || email.value.trim().isEmpty() || confirmPassword.value.trim().isEmpty()) {
+                                    if (name.value.trim().isEmpty()) { isNameFieldEmpty.value = true }
+                                    if (email.value.trim().isEmpty()) { isEmailFieldEmpty.value = true }
+                                    if (password.value.trim().isEmpty()) { isPasswordFieldEmpty.value = true }
                                     if (confirmPassword.value.isEmpty()) { isConfirmPasswordFieldEmpty.value = true }
                                     snackBarMessage.value = "Empty Fields!"
                                     showSnackBar.value = true
                                     return@Button
                                 }
-                                if(password.value != confirmPassword.value){
+                                if(password.value.trim() != confirmPassword.value.trim()){
                                     snackBarMessage.value = "Passwords doesn't match."
                                     showSnackBar.value = true
                                     return@Button
                                 }
-                                auth.createUserWithEmailAndPassword(email.value,password.value).addOnCompleteListener{ task ->
+                                auth.createUserWithEmailAndPassword(email.value.trim(),password.value.trim()).addOnCompleteListener{ task ->
                                     if(task.isSuccessful){
                                         val user = FirebaseAuth.getInstance().currentUser
                                         val sampleUser = User(userName = name.value,email.value)
